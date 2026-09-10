@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control</title>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;font-family:sans-serif;background:#111;color:#fff;padding:20px;}
+h1{text-align:center;font-size:1.4rem;}
+h2{max-width:900px;margin:30px auto 10px;font-size:1.1rem;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;max-width:900px;margin:0 auto;}
+.card{background:#1e1e1e;border-radius:10px;padding:10px;cursor:pointer;border:2px solid transparent;transition:.2s;}
+.card:hover{border-color:#f5a623;}
+.card.active{border-color:#4caf50;}
+.card img{width:100%;height:220px;object-fit:contain;border-radius:6px;background:#fff;display:block;pointer-events:none;}
+.card p{text-align:center;margin:8px 0 0;font-weight:bold;pointer-events:none;}
+.stopbtn{display:block;margin:24px auto;padding:10px 24px;background:#c0392b;color:#fff;border:none;border-radius:6px;font-size:1rem;cursor:pointer;}
+.uploadBox{max-width:900px;margin:20px auto;text-align:center;}
+.uploadBox input{color:#fff;}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:999;}
+.overlay.show{display:flex;}
+.box{background:#222;padding:24px 32px;border-radius:10px;text-align:center;}
+.box p{margin-bottom:16px;font-size:1.1rem;}
+.box button{padding:8px 20px;margin:0 8px;border:none;border-radius:6px;cursor:pointer;font-size:1rem;}
+.yes{background:#4caf50;color:#fff;}
+.no{background:#555;color:#fff;}
+.del{position:absolute;top:4px;right:4px;background:#c0392b;color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;}
+.cardwrap{position:relative;}
+.status{max-width:900px;margin:10px auto;text-align:center;color:#4caf50;font-size:.9rem;min-height:1.2em;}
+</style>
+</head>
+<body>
+<h1>Panel Kontrol Tampilan</h1>
+<div class="status" id="status"></div>
+<h2>Poster PDF</h2>
+<div class="grid">
+<div class="card" data-id="pdf1"><img src="../pdfs/thumb1.jpg"><p>Poster 1</p></div>
+<div class="card" data-id="pdf2"><img src="../pdfs/thumb2.jpg"><p>Poster 2</p></div>
+<div class="card" data-id="pdf3"><img src="../pdfs/thumb3.jpg"><p>Poster 3</p></div>
+</div>
+
+<h2>Upload Foto</h2>
+<div class="uploadBox">
+<input type="file" id="fileInput" accept="image/*">
+</div>
+<div class="grid" id="uploadGrid"></div>
+
+<button class="stopbtn" id="stopBtn">Kosongkan Layar</button>
+<div class="overlay" id="overlay">
+<div class="box">
+<p id="overlayText">Ingin tampilkan ini sekarang?</p>
+<button class="yes" id="yesBtn">Ya</button>
+<button class="no" id="noBtn">Batal</button>
+</div>
+</div>
+<script type="module">
+import { db, ref, onValue, set, push, remove } from "../firebase-config.js";
+
+const overlay = document.getElementById('overlay');
+const statusEl = document.getElementById('status');
+let pending = null;
+
+function flashStatus(msg){
+  statusEl.textContent = msg;
+  setTimeout(() => { statusEl.textContent = ''; }, 2000);
+}
+
+function openConfirm(id){
+  pending = id;
+  overlay.classList.add('show');
+}
+
+document.querySelectorAll('.card[data-id]').forEach(card => {
+  card.addEventListener('click', () => openConfirm(card.dataset.id));
+});
+
+document.getElementById('yesBtn').addEventListener('click', () => {
+  if (pending) {
+    set(ref(db, 'display/active'), pending)
+      .then(() => flashStatus('Tampilan diubah'))
+      .catch(err => flashStatus('Gagal: ' + err.message));
+  }
+  overlay.classList.remove('show');
+  pending = null;
+});
+
+document.getElementById('noBtn').addEventListener('click', () => {
+  overlay.classList.remove('show');
+  pending = null;
+});
+
+document.getElementById('stopBtn').addEventListener('click', () => {
+  set(ref(db, 'display/active'), null)
+    .then(() => flashStatus('Layar dikosongkan'))
+    .catch(err => flashStatus('Gagal: ' + err.message));
+});
+
+onValue(ref(db, 'display/active'), (snap) => {
+  const val = snap.val();
+  document.querySelectorAll('.card[data-id]').forEach(c => {
+    c.classList.toggle('active', c.dataset.id === val);
+  });
+  document.querySelectorAll('.cardwrap').forEach(c => {
+    c.classList.toggle('active', val === 'img:' + c.dataset.key);
+  });
+});
+
+const fileInput = document.getElementById('fileInput');
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const newRef = push(ref(db, 'uploads'));
+    set(newRef, { base64: reader.result, name: file.name })
+      .then(() => flashStatus('Foto diupload'))
+      .catch(err => flashStatus('Gagal upload: ' + err.message));
+    fileInput.value = '';
+  };
+  reader.readAsDataURL(file);
+});
+
+const uploadGrid = document.getElementById('uploadGrid');
+onValue(ref(db, 'uploads'), (snap) => {
+  const data = snap.val() || {};
+  uploadGrid.innerHTML = '';
+  Object.keys(data).forEach(key => {
+    const item = data[key];
+    const wrap = document.createElement('div');
+    wrap.className = 'cardwrap';
+    wrap.dataset.key = key;
+    wrap.innerHTML = `
+      <div class="card">
+        <img src="${item.base64}">
+        <p>${item.name || 'Foto'}</p>
+      </div>
+      <button class="del">×</button>
+    `;
+    wrap.querySelector('.card').addEventListener('click', () => openConfirm('img:' + key));
+    wrap.querySelector('.del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      remove(ref(db, 'uploads/' + key));
+    });
+    uploadGrid.appendChild(wrap);
+  });
+});
+</script>
+</body>
+</html>
