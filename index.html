@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Display</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #ffffff;
+    overflow: hidden;
+  }
+  #stage {
+    position: fixed;
+    inset: 0;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #mediaImg {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    display: none;
+  }
+  #logo {
+    width: min(30vw, 30vh, 260px);
+    height: auto;
+    display: block;
+  }
+  #fsBtn {
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.55);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 999;
+    transition: opacity 0.3s ease, background 0.2s ease;
+    opacity: 0;
+  }
+  #stage:hover #fsBtn, body.show-btn #fsBtn {
+    opacity: 1;
+  }
+  #fsBtn:hover {
+    background: rgba(0,0,0,0.75);
+  }
+  #fsBtn svg {
+    width: 24px;
+    height: 24px;
+    fill: #ffffff;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <img id="logo" src="/assets/logo.png" alt="logo">
+  <img id="mediaImg" alt="content">
+</div>
+<button id="fsBtn" title="Fullscreen">
+  <svg viewBox="0 0 24 24" id="fsIcon"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+</button>
+
+<script type="module">
+import { db } from "/firebase-config.js";
+import { ref, onValue } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
+
+const logo = document.getElementById('logo');
+const media = document.getElementById('mediaImg');
+const stage = document.getElementById('stage');
+const fsBtn = document.getElementById('fsBtn');
+const fsIcon = document.getElementById('fsIcon');
+
+const stateRef = ref(db, 'display/current');
+
+onValue(stateRef, (snap) => {
+  const val = snap.val();
+  if (!val || !val.url) {
+    media.style.display = 'none';
+    media.src = '';
+    logo.style.display = 'block';
+    return;
+  }
+  logo.style.display = 'none';
+  media.src = val.url;
+  media.style.display = 'block';
+});
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(()=>{});
+  } else {
+    document.exitFullscreen().catch(()=>{});
+  }
+}
+
+fsBtn.addEventListener('click', toggleFullscreen);
+
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement) {
+    fsIcon.innerHTML = '<path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>';
+  } else {
+    fsIcon.innerHTML = '<path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>';
+  }
+});
+
+let hideTimer;
+function showBtnTemp() {
+  document.body.classList.add('show-btn');
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => document.body.classList.remove('show-btn'), 2500);
+}
+window.addEventListener('mousemove', showBtnTemp);
+window.addEventListener('touchstart', showBtnTemp);
+showBtnTemp();
+</script>
+</body>
+</html>

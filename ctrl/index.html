@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #0f1115;
+    color: #eee;
+    padding: 20px;
+    padding-bottom: 60px;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+  p.sub {
+    color: #999;
+    font-size: 13px;
+    margin: 0 0 24px;
+  }
+  h2 {
+    font-size: 15px;
+    color: #bbb;
+    margin: 28px 0 12px;
+    border-bottom: 1px solid #2a2d34;
+    padding-bottom: 8px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: #1a1d24;
+    border: 2px solid #2a2d34;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+    position: relative;
+  }
+  .card:active { transform: scale(0.97); }
+  .card.active {
+    border-color: #22c55e;
+  }
+  .card img {
+    width: 100%;
+    height: 130px;
+    object-fit: cover;
+    display: block;
+    background: #fff;
+  }
+  .card .label {
+    padding: 8px 10px;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .badge {
+    background: #22c55e;
+    color: #000;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 6px;
+    display: none;
+  }
+  .card.active .badge { display: inline-block; }
+  .clear-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 130px;
+    background: #1a1d24;
+    border: 2px dashed #3a3d44;
+    border-radius: 12px;
+    cursor: pointer;
+    color: #999;
+    font-size: 13px;
+    text-align: center;
+    padding: 10px;
+  }
+  .clear-card:hover { border-color: #666; color: #ccc; }
+  .upload-box {
+    background: #1a1d24;
+    border: 2px dashed #3a3d44;
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+  .upload-box input[type=file] {
+    display: none;
+  }
+  .upload-label {
+    display: inline-block;
+    background: #2563eb;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .upload-label:hover { background: #1d4ed8; }
+  #uploadStatus {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #999;
+  }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #1a1d24;
+    border-radius: 14px;
+    padding: 24px;
+    max-width: 320px;
+    width: 100%;
+    text-align: center;
+  }
+  .modal img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    background: #fff;
+  }
+  .modal p {
+    font-size: 15px;
+    margin: 0 0 20px;
+  }
+  .modal-btns {
+    display: flex;
+    gap: 10px;
+  }
+  .modal-btns button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-yes {
+    background: #22c55e;
+    color: #000;
+  }
+  .btn-no {
+    background: #333;
+    color: #eee;
+  }
+  .status-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #16181d;
+    padding: 10px 20px;
+    font-size: 12px;
+    color: #999;
+    border-bottom: 1px solid #2a2d34;
+  }
+  .status-bar span { color: #22c55e; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="status-bar">Status layar: <span id="currentStatus">Kosong (logo)</span></div>
+<div style="height: 24px;"></div>
+
+<h1>Panel Kontrol Tampilan</h1>
+<p class="sub">Pilih konten untuk ditampilkan di layar utama</p>
+
+<h2>Slide Maulid</h2>
+<div class="grid" id="pdfGrid"></div>
+
+<h2>Foto Terupload</h2>
+<div class="grid" id="photoGrid">
+  <div style="color:#666; font-size:13px; grid-column: 1/-1;" id="noPhotos">Belum ada foto</div>
+</div>
+
+<h2>Upload Foto Baru</h2>
+<div class="upload-box">
+  <input type="file" id="fileInput" accept="image/*">
+  <label for="fileInput" class="upload-label">Pilih & Upload Foto</label>
+  <div id="uploadStatus"></div>
+</div>
+
+<h2>Lainnya</h2>
+<div class="grid">
+  <div class="clear-card" id="clearBtn">Kosongkan Layar<br>(Tampilkan Logo)</div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <img id="modalImg" src="" alt="preview">
+    <p>Ingin tampilkan ini sekarang?</p>
+    <div class="modal-btns">
+      <button class="btn-no" id="modalNo">Batal</button>
+      <button class="btn-yes" id="modalYes">Ya, Tampilkan</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from "/firebase-config.js";
+import { ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
+
+const items = [
+  { id: 'slide1', name: 'Slide 1', full: '/assets/pdfs/slide1.png', thumb: '/assets/pdfs/slide1_thumb.jpg' },
+  { id: 'slide2', name: 'Slide 2', full: '/assets/pdfs/slide2.png', thumb: '/assets/pdfs/slide2_thumb.jpg' },
+  { id: 'slide3', name: 'Slide 3', full: '/assets/pdfs/slide3.png', thumb: '/assets/pdfs/slide3_thumb.jpg' }
+];
+
+const pdfGrid = document.getElementById('pdfGrid');
+const photoGrid = document.getElementById('photoGrid');
+const noPhotos = document.getElementById('noPhotos');
+const modalOverlay = document.getElementById('modalOverlay');
+const modalImg = document.getElementById('modalImg');
+const modalYes = document.getElementById('modalYes');
+const modalNo = document.getElementById('modalNo');
+const currentStatus = document.getElementById('currentStatus');
+const uploadStatus = document.getElementById('uploadStatus');
+
+let pendingUrl = null;
+let pendingLabel = null;
+let currentActiveUrl = null;
+
+function renderPdfCards() {
+  pdfGrid.innerHTML = '';
+  items.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.url = item.full;
+    card.innerHTML = `
+      <img src="${item.thumb}" alt="${item.name}">
+      <div class="label"><span>${item.name}</span><span class="badge">TAMPIL</span></div>
+    `;
+    card.addEventListener('click', () => openModal(item.full, item.name, item.thumb));
+    pdfGrid.appendChild(card);
+  });
+  updateActiveStates();
+}
+
+function updateActiveStates() {
+  document.querySelectorAll('.card').forEach(c => {
+    c.classList.toggle('active', c.dataset.url === currentActiveUrl);
+  });
+}
+
+function openModal(url, label, thumbForPreview) {
+  pendingUrl = url;
+  pendingLabel = label;
+  modalImg.src = thumbForPreview || url;
+  modalOverlay.classList.add('show');
+}
+
+modalNo.addEventListener('click', () => {
+  modalOverlay.classList.remove('show');
+  pendingUrl = null;
+});
+
+modalYes.addEventListener('click', async () => {
+  if (pendingUrl) {
+    await set(ref(db, 'display/current'), { url: pendingUrl, label: pendingLabel, ts: Date.now() });
+  }
+  modalOverlay.classList.remove('show');
+});
+
+document.getElementById('clearBtn').addEventListener('click', async () => {
+  await set(ref(db, 'display/current'), null);
+});
+
+onValue(ref(db, 'display/current'), (snap) => {
+  const val = snap.val();
+  if (!val || !val.url) {
+    currentStatus.textContent = 'Kosong (logo)';
+    currentActiveUrl = null;
+  } else {
+    currentStatus.textContent = val.label || val.url;
+    currentActiveUrl = val.url;
+  }
+  updateActiveStates();
+});
+
+function renderPhotos(photos) {
+  photoGrid.innerHTML = '';
+  const keys = Object.keys(photos || {});
+  if (keys.length === 0) {
+    photoGrid.innerHTML = '<div style="color:#666; font-size:13px; grid-column: 1/-1;">Belum ada foto</div>';
+    return;
+  }
+  keys.reverse().forEach(key => {
+    const p = photos[key];
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.url = p.url;
+    card.innerHTML = `
+      <img src="${p.url}" alt="${p.name || 'foto'}">
+      <div class="label"><span>${p.name || 'Foto'}</span><span class="badge">TAMPIL</span></div>
+    `;
+    card.addEventListener('click', () => openModal(p.url, p.name || 'Foto'));
+    photoGrid.appendChild(card);
+  });
+  updateActiveStates();
+}
+
+onValue(ref(db, 'photos'), (snap) => {
+  renderPhotos(snap.val());
+});
+
+function compressImage(file, maxDim) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h && w > maxDim) { h = h * maxDim / w; w = maxDim; }
+        else if (h > maxDim) { w = w * maxDim / h; h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  uploadStatus.textContent = 'Mengupload...';
+  try {
+    const dataUrl = await compressImage(file, 1600);
+    if (dataUrl.length > 900000) {
+      uploadStatus.textContent = 'Gagal: file terlalu besar setelah kompresi';
+      e.target.value = '';
+      return;
+    }
+    const newRef = push(ref(db, 'photos'));
+    await set(newRef, { url: dataUrl, name: file.name, ts: Date.now() });
+    uploadStatus.textContent = 'Upload berhasil!';
+    setTimeout(() => uploadStatus.textContent = '', 2000);
+  } catch (err) {
+    uploadStatus.textContent = 'Gagal upload: ' + err.message;
+  }
+  e.target.value = '';
+});
+
+renderPdfCards();
+</script>
+</body>
+</html>
